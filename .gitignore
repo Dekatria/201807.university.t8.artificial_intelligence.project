@@ -1,5 +1,10 @@
 # Datasets
 data/
+model/data/
+
+# Clone test repo
+model/neural-vqa-tensorflow/
+model/VQA-tensorflow/
 
 
 # Byte-compiled / optimized / DLL files
