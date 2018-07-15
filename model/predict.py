@@ -41,8 +41,8 @@ FLAGS = tf.app.flags.FLAGS
 
 def main():
 
-    print("Image:", FLAGS.image_path)
-    print("Question:", FLAGS.question)
+    print ("Image:", FLAGS.image_path)
+    print ("Question:", FLAGS.question)
 
     vocab_data = utils.get_question_answer_vocab(FLAGS.data_dir)
     qvocab = vocab_data['question_vocab']
@@ -119,7 +119,6 @@ def main():
     print("Top Answers")
     for i in range(5):
         print(ans_map[answer_probab_tuples[i][1]])
-
 
 if __name__ == '__main__':
     main()
