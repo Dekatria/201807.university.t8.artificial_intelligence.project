@@ -15,10 +15,15 @@ def load_image_features(data_dir, split):
 		image_id_list = np.array(hf.get("image_id_list"))
 	return img_features, image_id_list
 
-def load_questions_answers(data_dir = "../data"):
+def load_questions_answers(data_dir = "./data"):
 	qa_data_file = join(data_dir, "qa_data_file.pkl")
 	
 	if isfile(qa_data_file):
 		with open(qa_data_file, "rb") as f:
 			data = pickle.load(f)
 			return data
+
+def get_question_answer_vocab(data_dir = './data'):
+	vocab_file = join(data_dir, 'vocab_file.pkl')
+	vocab_data = pickle.load(open(vocab_file))
+	return vocab_data

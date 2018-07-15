@@ -1,46 +1,52 @@
 import tensorflow as tf
 import vis_lstm_model
-import data_loader
 import argparse
 import numpy as np
 from os.path import isfile, join
 import utils
 import re
 
+tf.app.flags.DEFINE_string("image_path", None, "directory of image")
+
+tf.app.flags.DEFINE_string("checkpoint_path", "./data/pretrain/model", "directory of checkpoint files")
+
+tf.app.flags.DEFINE_integer("num_lstm_layers", 2, "number of lstm layers")
+
+tf.app.flags.DEFINE_integer("img_feat_len", 1001, "length of image feature vector")
+
+tf.app.flags.DEFINE_integer("rnn_size", 300, "size of rnn")
+
+tf.app.flags.DEFINE_integer("que_feat_len", 300, "length of question feature vector")
+
+tf.app.flags.DEFINE_integer("word_dropout", 0.5, "dropout rate of word nodes")
+
+tf.app.flags.DEFINE_integer("img_dropout", 0.5, "dropout rate of image nodes")
+
+tf.app.flags.DEFINE_string("data_dir", "./data", "directory of data")
+
+tf.app.flags.DEFINE_string("question", None, "question")
+
+FLAGS = tf.app.flags.FLAGS
+
 def main():
-	parser = argparse.ArgumentParser()
-	parser.add_argument('--image_path', type=str, default = 'Data/cat.jpeg',
-                       help='Image Path')
-	parser.add_argument('--model_path', type=str, default = 'Data/Models/model2.ckpt',
-                       help='Model Path')
-	parser.add_argument('--num_lstm_layers', type=int, default=2,
-                       help='num_lstm_layers')
-	parser.add_argument('--fc7_feature_length', type=int, default=4096,
-                       help='fc7_feature_length')
-	parser.add_argument('--rnn_size', type=int, default=512,
-                       help='rnn_size')
-	parser.add_argument('--embedding_size', type=int, default=512,
-                       help='embedding_size'),
-	parser.add_argument('--word_emb_dropout', type=float, default=0.5,
-                       help='word_emb_dropout')
-	parser.add_argument('--image_dropout', type=float, default=0.5,
-                       help='image_dropout')
-	parser.add_argument('--data_dir', type=str, default='Data',
-                       help='Data directory')
-	parser.add_argument('--question', type=str, default='Which animal is this?',
-                       help='Question')
-	
-	
 
-	args = parser.parse_args()
+	print "Image:", FLAGS.image_path
+	print "Question:", FLAGS.question
 
-	print "Image:", args.image_path
-	print "Question:", args.question
-
-	vocab_data = data_loader.get_question_answer_vocab(args.data_dir)
+	vocab_data = utils.get_question_answer_vocab(FLAGS.data_dir)
 	qvocab = vocab_data['question_vocab']
 	q_map = { vocab_data['question_vocab'][qw] : qw for qw in vocab_data['question_vocab']}
 	
+	images = tf.placeholder("float32", [None, 224, 224, 3])
+	image_array = load_image_array(image_path)
+	image_feed = np.ndarray((1,224,224,3))
+	image_feed[0:,:,:] = image_array
+	feed_dict  = { images : image_feed }
+	fc7_tensor = graph.get_tensor_by_name("import/Relu_1:0")
+	fc7_features = sess.run(fc7_tensor, feed_dict = feed_dict)
+	sess.close()
+	return fc7_features
+
 	fc7_features = utils.extract_fc7_features(args.image_path, join(args.data_dir, 'vgg16.tfmodel'))
 	
 	model_options = {
