@@ -1,5 +1,6 @@
 from tkinter import Tk, Label, Button, Entry, StringVar, filedialog
 from PIL import Image, ImageTk
+import predict
 
 
 class VQAGUI:
@@ -54,16 +55,24 @@ class VQAGUI:
 
     #        self.print_button.pack()
     def getAnswers(self):
-        res = ["no", "no", "yes", "yes", "what?"]
-        print(self.filename)
+        res = []
+
         #import predict
         #TODO put input img path and question.
-		
+
         #predict.main(img,question)
         # get answers from model eval forward
         ##### ASK QUESTION HERE
-        for i in range(len(self.answers)):
+
+        # for i in range(len(self.answers)):
+        # self.answers[i].set(res[i])
+
+        ans_map, answer_probab_tuples = predict.main(self.filename, self.getQuestion())
+
+        for i in range(5):
+            res.append(ans_map[answer_probab_tuples[i][1]])
             self.answers[i].set(res[i])
+            
 
 
     def getQuestion(self):

@@ -7,40 +7,41 @@ import utils
 import time
 import re
 
-slim = tf.contrib.slim
-resnet = nets.resnet_v2
-
-tf.app.flags.DEFINE_string("image_path", "test.jpg", "directory of image")
-
-tf.app.flags.DEFINE_string("img_checkpoint_path", "./data/pretrain/resnet152/resnet_v2_152.ckpt",
-                           "directory of checkpoint files for image feature extraction")
-
-tf.app.flags.DEFINE_string("checkpoint_path", "./data/pretrain/model",
-                           "directory of checkpoint files for overall model")
-
-tf.app.flags.DEFINE_integer("num_lstm_layers", 2, "number of lstm layers")
-
-tf.app.flags.DEFINE_integer(
-    "img_feat_len", 1001, "length of image feature vector")
-
-tf.app.flags.DEFINE_integer("rnn_size", 300, "size of rnn")
-
-tf.app.flags.DEFINE_integer(
-    "que_feat_len", 300, "length of question feature vector")
-
-tf.app.flags.DEFINE_integer("word_dropout", 0.5, "dropout rate of word nodes")
-
-tf.app.flags.DEFINE_integer("img_dropout", 0.5, "dropout rate of image nodes")
-
-tf.app.flags.DEFINE_string("data_dir", "./data", "directory of data")
-
-tf.app.flags.DEFINE_string("question", "What colour are her eyes?", "question")
-
-FLAGS = tf.app.flags.FLAGS
 
 
-def main():
+def main(image_path, question):
 
+    slim = tf.contrib.slim
+    resnet = nets.resnet_v2
+
+    tf.app.flags.DEFINE_string("image_path", image_path, "directory of image")
+
+    tf.app.flags.DEFINE_string("question", question, "question")
+
+    tf.app.flags.DEFINE_string("img_checkpoint_path", "./data/pretrain/resnet152/resnet_v2_152.ckpt",
+                               "directory of checkpoint files for image feature extraction")
+
+    tf.app.flags.DEFINE_string("checkpoint_path", "./data/pretrain/model",
+                               "directory of checkpoint files for overall model")
+
+    tf.app.flags.DEFINE_integer("num_lstm_layers", 2, "number of lstm layers")
+
+    tf.app.flags.DEFINE_integer(
+        "img_feat_len", 1001, "length of image feature vector")
+
+    tf.app.flags.DEFINE_integer("rnn_size", 300, "size of rnn")
+
+    tf.app.flags.DEFINE_integer(
+        "que_feat_len", 300, "length of question feature vector")
+
+    tf.app.flags.DEFINE_integer("word_dropout", 0.5, "dropout rate of word nodes")
+
+    tf.app.flags.DEFINE_integer("img_dropout", 0.5, "dropout rate of image nodes")
+
+    tf.app.flags.DEFINE_string("data_dir", "./data", "directory of data")
+
+
+    FLAGS = tf.app.flags.FLAGS
     print ("Image:", FLAGS.image_path)
     print ("Question:", FLAGS.question)
 
@@ -57,21 +58,21 @@ def main():
         restorer = tf.train.Saver()
 
         with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
-	        start = time.clock()
-	        image_array = utils.load_image_array(FLAGS.image_path)
-	        image_feed = np.ndarray((1, 224, 224, 3))
-	        image_feed[0:, :, :] = image_array
+            start = time.clock()
+            image_array = utils.load_image_array(FLAGS.image_path)
+            image_feed = np.ndarray((1, 224, 224, 3))
+            image_feed[0:, :, :] = image_array
 
-	        # checkpoint = tf.train.latest_checkpoint(FLAGS.img_checkpoint_path)
-	        checkpoint = FLAGS.img_checkpoint_path
-	        restorer.restore(sess, checkpoint)
-	        print("Image Model loaded")
-	        feed_dict = {images: image_feed}
-	        img_feature = sess.run(net, feed_dict=feed_dict)
-	        img_feature = np.squeeze(img_feature)
-	        end = time.clock()
-	        print("Time elapsed", end - start)
-	        print("Image processed")
+            # checkpoint = tf.train.latest_checkpoint(FLAGS.img_checkpoint_path)
+            checkpoint = FLAGS.img_checkpoint_path
+            restorer.restore(sess, checkpoint)
+            print("Image Model loaded")
+            feed_dict = {images: image_feed}
+            img_feature = sess.run(net, feed_dict=feed_dict)
+            img_feature = np.squeeze(img_feature)
+            end = time.clock()
+            print("Time elapsed", end - start)
+            print("Image processed")
 
     model_options = {
         'num_lstm_layers': FLAGS.num_lstm_layers,
@@ -105,12 +106,12 @@ def main():
         input_tensors, t_prediction, t_ans_probab = model.build_generator()
         restorer = tf.train.Saver()
         with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
-	        checkpoint = tf.train.latest_checkpoint(FLAGS.checkpoint_path)
-	        restorer.restore(sess, checkpoint)
-	        pred, answer_probab = sess.run([t_prediction, t_ans_probab], feed_dict={
-	            input_tensors['img']: np.reshape(img_feature, [1,1001]),
-	            input_tensors['sentence']: question_ids,
-	        })
+            checkpoint = tf.train.latest_checkpoint(FLAGS.checkpoint_path)
+            restorer.restore(sess, checkpoint)
+            pred, answer_probab = sess.run([t_prediction, t_ans_probab], feed_dict={
+                input_tensors['img']: np.reshape(img_feature, [1,1001]),
+                input_tensors['sentence']: question_ids,
+            })
 
     print("Ans:", ans_map[pred[0]])
     answer_probab_tuples = [(-answer_probab[0][idx], idx)
@@ -119,6 +120,8 @@ def main():
     print("Top Answers")
     for i in range(5):
         print(ans_map[answer_probab_tuples[i][1]])
+    
+    return (ans_map, answer_probab_tuples)
 
 if __name__ == '__main__':
     main()
