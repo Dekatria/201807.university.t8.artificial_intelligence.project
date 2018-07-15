@@ -30,18 +30,18 @@ def main():
 
 	with tf.Graph().as_default():
 
-		image_ids = {}
-		if FLAGS.split == "train":
-			filename = join(
-	            FLAGS.data_dir, 'annotations/v2_OpenEnded_mscoco_train2014_questions.json')
-		else:
-			filename = join(
-				FLAGS.data_dir, 'annotations/v2_OpenEnded_mscoco_val2014_questions.json')
-		with open(filename) as f:
-			raw = json.loads(f.read())
-		for que in raw["questions"]:
-			image_ids[que["image_id"]] = 1
+		utils.prepare_training_data(FLAGS.data_dir)
 
+		all_data = utils.load_questions_answers(args)
+		if args.split == "train":
+			qa_data = all_data['training']
+		else:
+			qa_data = all_data['validation']
+	
+		image_ids = {}
+		for qa in qa_data:
+			image_ids[qa['image_id']] = 1
+		
 		image_id_list = [img_id for img_id in image_ids]
 		print("Total Images", len(image_id_list))
 
@@ -51,8 +51,6 @@ def main():
 			net, _ = resnet.resnet_v2_152(images, FLAGS.output_size, is_training=False)
 
 		restorer = tf.train.Saver()
-
-		optimizer = tf.train.AdamOptimizer(learning_rate=.001)
 
 		results = np.ndarray((len(image_id_list), FLAGS.output_size))
 		idx = 0
@@ -90,7 +88,7 @@ def main():
 		print("Saving image features")
 
 		h5f_img_embed = h5py.File(
-			join(FLAGS.data_dir, FLAGS.split + 'img_embed.h5'), 'w')
+			join(FLAGS.data_dir, FLAGS.split + '_img_embed.h5'), 'w')
 		h5f_img_embed.create_dataset('img_features', data=results)
 		h5f_img_embed.close()
 

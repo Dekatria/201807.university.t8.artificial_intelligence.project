@@ -12,12 +12,10 @@ class Vis_lstm_model:
 		with tf.device('/cpu:0'):
 			self.options = options
 
-			# +1 for zero padding
 			self.Wemb = tf.Variable(tf.random_uniform([options['q_vocab_size'] + 1, options['embedding_size']], -1.0, 1.0), name = 'Wemb')
-			self.Wimg = self.init_weight(options['fc7_feature_length'], options['embedding_size'], name = 'Wimg')
+			self.Wimg = self.init_weight(options['img_feature_length'], options['embedding_size'], name = 'Wimg')
 			self.bimg = self.init_bias(options['embedding_size'], name = 'bimg')
 			
-			# TODO: Assumed embedding size and rnn-size to be same
 			self.lstm_W = []
 			self.lstm_U = []
 			self.lstm_b = []
@@ -55,9 +53,7 @@ class Vis_lstm_model:
 				else:
 					c[lstm_step] = f * c[lstm_step-1] + i * new_c
 
-				# BUG IN THE LSTM --> Haven't corrected this yet, Will have to retrain the model.
 				h[lstm_step] = o * tf.nn.tanh(c[lstm_step])
-				# h[lstm_step] = o * tf.nn.tanh(new_c)
 				layer_output.append(h[lstm_step])
 
 			x = layer_output
@@ -69,7 +65,7 @@ class Vis_lstm_model:
 
 
 	def build_model(self):
-		fc7_features = tf.placeholder('float32',[ None, self.options['fc7_feature_length'] ], name = 'fc7')
+		img_features = tf.placeholder('float32',[ None, self.options['img_feature_length'] ], name = 'img')
 		sentence = tf.placeholder('int32',[None, self.options['lstm_steps'] - 1], name = "sentence")
 		answer = tf.placeholder('float32', [None, self.options['ans_vocab_size']], name = "answer")
 
@@ -80,16 +76,15 @@ class Vis_lstm_model:
 			word_emb = tf.nn.dropout(word_emb, self.options['word_emb_dropout'], name = "word_emb" + str(i))
 			word_embeddings.append(word_emb)
 
-		image_embedding = tf.matmul(fc7_features, self.Wimg) + self.bimg
+		image_embedding = tf.matmul(img_features, self.Wimg) + self.bimg
 		image_embedding = tf.nn.tanh(image_embedding)
 		image_embedding = tf.nn.dropout(image_embedding, self.options['image_dropout'], name = "vis_features")
 
-		# Image as the last word in the lstm
 		word_embeddings.append(image_embedding)
 		lstm_output = self.forward_pass_lstm(word_embeddings)
 		lstm_answer = lstm_output[-1]
 		logits = tf.matmul(lstm_answer, self.ans_sm_W) + self.ans_sm_b
-		# ce = tf.nn.softmax_cross_entropy_with_logits(logits, answer, name = 'ce')
+
 		ce = tf.nn.softmax_cross_entropy_with_logits(labels=answer, logits= logits, name = 'ce')
 		answer_probab = tf.nn.softmax(logits, name='answer_probab')
 		
@@ -99,14 +94,14 @@ class Vis_lstm_model:
 
 		loss = tf.reduce_sum(ce, name = 'loss')
 		input_tensors = {
-			'fc7' : fc7_features,
+			'img' : img_features,
 			'sentence' : sentence,
 			'answer' : answer
 		}
 		return input_tensors, loss, accuracy, predictions
 
 	def build_generator(self):
-		fc7_features = tf.placeholder('float32',[ None, self.options['fc7_feature_length'] ], name = 'fc7')
+		img_features = tf.placeholder('float32',[ None, self.options['img_feature_length'] ], name = 'img')
 		sentence = tf.placeholder('int32',[None, self.options['lstm_steps'] - 1], name = "sentence")
 
 		word_embeddings = []
@@ -114,7 +109,7 @@ class Vis_lstm_model:
 			word_emb = tf.nn.embedding_lookup(self.Wemb, sentence[:,i])
 			word_embeddings.append(word_emb)
 
-		image_embedding = tf.matmul(fc7_features, self.Wimg) + self.bimg
+		image_embedding = tf.matmul(img_features, self.Wimg) + self.bimg
 		image_embedding = tf.nn.tanh(image_embedding)
 
 		word_embeddings.append(image_embedding)
@@ -127,7 +122,7 @@ class Vis_lstm_model:
 		predictions = tf.argmax(answer_probab,1)
 
 		input_tensors = {
-			'fc7' : fc7_features,
+			'img' : img_features,
 			'sentence' : sentence
 		}
 

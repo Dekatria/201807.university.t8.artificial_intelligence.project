@@ -1,39 +1,24 @@
+
+from os.path import isfile, join
+import json
 import numpy as np
-from scipy import misc
-import tensorflow as tf
+import pickle
+import h5py
 
-# VGG 16 accepts RGB channel 0 to 1 (This tensorflow model).
-def load_image_array(image_file):
-	img = misc.imread(image_file)
-	# GRAYSCALE
-	if len(img.shape) == 2:
-		img_new = np.ndarray( (img.shape[0], img.shape[1], 3), dtype = 'float32')
-		img_new[:,:,0] = img
-		img_new[:,:,1] = img
-		img_new[:,:,2] = img
-		img = img_new
+def load_image_features(data_dir, split):
+	import h5py
+	img_features = None
+	image_id_list = None
+	with h5py.File( join( data_dir, (split + "_img_embed.h5")),"r") as hf:
+		img_features = np.array(hf.get("img_features"))
+	with h5py.File( join( data_dir, (split + "_image_id_list.h5")),"r") as hf:
+		image_id_list = np.array(hf.get("image_id_list"))
+	return img_features, image_id_list
 
-	img_resized = misc.imresize(img, (224, 224))
-	return (img_resized/255.0).astype('float32')
-
-# FOR PREDICTION ON A SINGLE IMAGE
-def extract_fc7_features(image_path, model_path):
-	vgg_file = open(model_path)
-	vgg16raw = vgg_file.read()
-	vgg_file.close()
-
-	graph_def = tf.GraphDef()
-	graph_def.ParseFromString(vgg16raw)
-	images = tf.placeholder("float32", [None, 224, 224, 3])
-	tf.import_graph_def(graph_def, input_map={ "images": images })
-	graph = tf.get_default_graph()
-
-	sess = tf.Session()
-	image_array = load_image_array(image_path)
-	image_feed = np.ndarray((1,224,224,3))
-	image_feed[0:,:,:] = image_array
-	feed_dict  = { images : image_feed }
-	fc7_tensor = graph.get_tensor_by_name("import/Relu_1:0")
-	fc7_features = sess.run(fc7_tensor, feed_dict = feed_dict)
-	sess.close()
-	return fc7_features
+def load_questions_answers(data_dir = "../data"):
+	qa_data_file = join(data_dir, "qa_data_file.pkl")
+	
+	if isfile(qa_data_file):
+		with open(qa_data_file, "rb") as f:
+			data = pickle.load(f)
+			return data
