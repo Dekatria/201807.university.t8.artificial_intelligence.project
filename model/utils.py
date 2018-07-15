@@ -4,6 +4,7 @@ import json
 import numpy as np
 import pickle
 import h5py
+from scipy import misc
 
 def load_image_features(data_dir, split):
 	import h5py
@@ -25,5 +26,17 @@ def load_questions_answers(data_dir = "./data"):
 
 def get_question_answer_vocab(data_dir = './data'):
 	vocab_file = join(data_dir, 'vocab_file.pkl')
-	vocab_data = pickle.load(open(vocab_file))
+	vocab_data = pickle.load(open(vocab_file, "rb"))
 	return vocab_data
+
+def load_image_array(image_file):
+	img = misc.imread(image_file)
+	if len(img.shape) == 2:
+		img_new = np.ndarray( (img.shape[0], img.shape[1], 3), dtype = 'float32')
+		img_new[:,:,0] = img
+		img_new[:,:,1] = img
+		img_new[:,:,2] = img
+		img = img_new
+
+	img_resized = misc.imresize(img, (224, 224))
+	return (img_resized/255.0).astype('float32')
