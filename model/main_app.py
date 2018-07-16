@@ -87,8 +87,11 @@ class VQAGUI:
             self.openImage(self.filename)
 
     def openImage(self, filename):
-        self.image = Image.open(self.filename)
-        self.image = self.image.resize((250, 250), Image.ANTIALIAS)
+        img = Image.open(self.filename)
+        basewidth = 300
+        wpercent = (basewidth / float(img.size[0]))
+        hsize = int((float(img.size[1]) * float(wpercent)))
+        self.image = img.resize((basewidth, hsize), Image.ANTIALIAS)
         photo = ImageTk.PhotoImage(self.image)
         self.imageLabel.configure(image=photo)
         self.imageLabel.image = photo  # keep a reference!
