@@ -2,7 +2,7 @@ from scipy import misc
 import tensorflow as tf
 from os.path import isfile, join
 import json
-import rev
+import re
 import numpy as np
 import pickle
 
@@ -75,7 +75,7 @@ def prepare_training_data(data_dir = '../data'):
     vocab_file = join(data_dir, 'vocab_file.pkl')
 
     if isfile(qa_data_file):
-        with open(qa_data_file) as f:
+        with open(qa_data_file,"rb") as f:
             data = pickle.load(f)
             return data
 
@@ -175,6 +175,6 @@ def load_questions_answers(data_dir = 'Data'):
     qa_data_file = join(data_dir, 'qa_data_file.pkl')
     
     if isfile(qa_data_file):
-        with open(qa_data_file) as f:
+        with open(qa_data_file,"rb") as f:
             data = pickle.load(f)
             return data

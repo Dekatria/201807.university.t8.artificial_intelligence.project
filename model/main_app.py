@@ -69,7 +69,7 @@ class VQAGUI:
 
         ans_map, answer_probab_tuples = predict.main(self.filename, self.getQuestion())
         for i in range(5):
-            res.append(ans_map[answer_probab_tuples[i][1]] +"," +  str(-1*answer_probab_tuples[i][0]))
+            res.append(ans_map[answer_probab_tuples[i][1]] +"," + "%0.2f" % (-100*answer_probab_tuples[i][0]) + "%")
             self.answers[i].set(res[i])
             
 

@@ -32,8 +32,8 @@ def main():
 
 		utils.prepare_training_data(FLAGS.data_dir)
 
-		all_data = utils.load_questions_answers(args)
-		if args.split == "train":
+		all_data = utils.load_questions_answers(FLAGS.data_dir)
+		if FLAGS.split == "train":
 			qa_data = all_data['training']
 		else:
 			qa_data = all_data['validation']
