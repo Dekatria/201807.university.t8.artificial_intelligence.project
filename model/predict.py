@@ -13,9 +13,10 @@ def main(image_path, question):
 
     slim = tf.contrib.slim
     resnet = nets.resnet_v2
-
+	
+    """
     tf.app.flags.DEFINE_string("image_path", image_path, "directory of image")
-
+	
     tf.app.flags.DEFINE_string("question", question, "question")
 
     tf.app.flags.DEFINE_string("img_checkpoint_path", "./data/pretrain/resnet152/resnet_v2_152.ckpt",
@@ -34,18 +35,31 @@ def main(image_path, question):
     tf.app.flags.DEFINE_integer(
         "que_feat_len", 300, "length of question feature vector")
 
-    tf.app.flags.DEFINE_integer("word_dropout", 0.5, "dropout rate of word nodes")
+    tf.app.flags.DEFINE_float("word_dropout", 0.5, "dropout rate of word nodes")
 
-    tf.app.flags.DEFINE_integer("img_dropout", 0.5, "dropout rate of image nodes")
+    tf.app.flags.DEFINE_float("img_dropout", 0.5, "dropout rate of image nodes")
 
     tf.app.flags.DEFINE_string("data_dir", "./data", "directory of data")
-
-
+	
     FLAGS = tf.app.flags.FLAGS
     print ("Image:", FLAGS.image_path)
     print ("Question:", FLAGS.question)
-
-    vocab_data = utils.get_question_answer_vocab(FLAGS.data_dir)
+    """
+	
+    #FLAGS = object()
+    flags_image_path = image_path
+    flags_question = question
+    flags_img_checkpoint_path = "./data/pretrain/resnet152/resnet_v2_152.ckpt"
+    flags_checkpoint_path = "./data/pretrain/model"
+    flags_num_lstm_layers = 2
+    flags_img_feat_len = 1001
+    flags_rnn_size = 300
+    flags_que_feat_len = 300
+    flags_word_dropout = 0.5
+    flags_img_dropout = 0.5
+    flags_data_dir = "./data"
+	
+    vocab_data = utils.get_question_answer_vocab(flags_data_dir)
     qvocab = vocab_data['question_vocab']
     q_map = {vocab_data['question_vocab'][qw]
         : qw for qw in vocab_data['question_vocab']}
@@ -57,14 +71,14 @@ def main(image_path, question):
 
         restorer = tf.train.Saver()
 
-        with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
+        with tf.Session() as sess:#config=tf.ConfigProto(log_device_placement=True)) as sess:
             start = time.clock()
-            image_array = utils.load_image_array(FLAGS.image_path)
+            image_array = utils.load_image_array(flags_image_path)
             image_feed = np.ndarray((1, 224, 224, 3))
             image_feed[0:, :, :] = image_array
 
-            # checkpoint = tf.train.latest_checkpoint(FLAGS.img_checkpoint_path)
-            checkpoint = FLAGS.img_checkpoint_path
+            # checkpoint = tf.train.latest_checkpoint(flags_img_checkpoint_path)
+            checkpoint = flags_img_checkpoint_path
             restorer.restore(sess, checkpoint)
             print("Image Model loaded")
             feed_dict = {images: image_feed}
@@ -75,12 +89,12 @@ def main(image_path, question):
             print("Image processed")
 
     model_options = {
-        'num_lstm_layers': FLAGS.num_lstm_layers,
-        'rnn_size': FLAGS.rnn_size,
-        'embedding_size': FLAGS.que_feat_len,
-        'word_emb_dropout': FLAGS.word_dropout,
-        'image_dropout': FLAGS.img_dropout,
-        'img_feature_length': FLAGS.img_feat_len,
+        'num_lstm_layers': flags_num_lstm_layers,
+        'rnn_size': flags_rnn_size,
+        'embedding_size': flags_que_feat_len,
+        'word_emb_dropout': flags_word_dropout,
+        'image_dropout': flags_img_dropout,
+        'img_feature_length': flags_img_feat_len,
         'lstm_steps': vocab_data['max_question_length'] + 1,
         'q_vocab_size': len(vocab_data['question_vocab']),
         'ans_vocab_size': len(vocab_data['answer_vocab'])
@@ -90,7 +104,7 @@ def main(image_path, question):
     word_regex = re.compile(r'\w+')
     question_ids = np.zeros(
         (1, vocab_data['max_question_length']), dtype='int32')
-    question_words = re.findall(word_regex, FLAGS.question)
+    question_words = re.findall(word_regex, flags_question)
     base = vocab_data['max_question_length'] - len(question_words)
     for i in range(0, len(question_words)):
         if question_words[i] in question_vocab:
@@ -105,8 +119,8 @@ def main(image_path, question):
         model = vis_lstm_model.Vis_lstm_model(model_options)
         input_tensors, t_prediction, t_ans_probab = model.build_generator()
         restorer = tf.train.Saver()
-        with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
-            checkpoint = tf.train.latest_checkpoint(FLAGS.checkpoint_path)
+        with tf.Session() as sess:#config=tf.ConfigProto(log_device_placement=True)) as sess:
+            checkpoint = tf.train.latest_checkpoint(flags_checkpoint_path)
             restorer.restore(sess, checkpoint)
             pred, answer_probab = sess.run([t_prediction, t_ans_probab], feed_dict={
                 input_tensors['img']: np.reshape(img_feature, [1,1001]),
