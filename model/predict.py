@@ -9,7 +9,7 @@ import re
 
 
 
-def main(image_path, question):
+def main(image_path="test.jpg", question="what is in the image?"):
 
     slim = tf.contrib.slim
     resnet = nets.resnet_v2

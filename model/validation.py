@@ -38,6 +38,31 @@ def main():
 	
 	ans_map = { qa_data['answer_vocab'][ans] : ans for ans in qa_data['answer_vocab']}
 
+
+	with tf.Graph().as_default():
+        images = tf.placeholder("float32", [None, 224, 224, 3])
+        with slim.arg_scope(resnet.resnet_arg_scope()):
+            net, _ = resnet.resnet_v2_152(images, 1001, is_training=False)
+
+        restorer = tf.train.Saver()
+
+        with tf.Session() as sess:#config=tf.ConfigProto(log_device_placement=True)) as sess:
+            start = time.clock()
+            image_array = utils.load_image_array(flags_image_path)
+            image_feed = np.ndarray((1, 224, 224, 3))
+            image_feed[0:, :, :] = image_array
+
+            # checkpoint = tf.train.latest_checkpoint(flags_img_checkpoint_path)
+            checkpoint = flags_img_checkpoint_path
+            restorer.restore(sess, checkpoint)
+            print("Image Model loaded")
+            feed_dict = {images: image_feed}
+            img_feature = sess.run(net, feed_dict=feed_dict)
+            img_feature = np.squeeze(img_feature)
+            end = time.clock()
+            print("Time elapsed", end - start)
+            print("Image processed")
+
 	model_options = {
 		'num_lstm_layers': flags_num_lstm_layers,
 		'rnn_size': flags_rnn_size,
@@ -59,29 +84,29 @@ def main():
 		checkpoint = tf.train.latest_checkpoint(FLAGS.checkpoint_path)
 		restorer.restore(sess, checkpoint)
 			
-	batch_no = 0
-	
-	while (batch_no*FLAGS.batch_size) < len(qa_data["validation"]):
-		sentence, answer, img = get_validation_batch(batch_no, FLAGS.batch_size, img_features, image_id_map, qa_data)
+		batch_no = 0
 		
-		_, loss_value, accuracy, pred = sess.run([t_prediction, t_ans_probab], feed_dict={
-				input_tensors['img']: img,
-				input_tensors["sentence"]:sentence,
-				input_tensors['sentence']: answer,
-				})
-		
-		batch_no += 1
-		
-		if FLAGS.debug:
-			for idx, p in enumerate(pred):
-				print(ans_map[p], ans_map[ np.argmax(answer[idx])])
+		while (batch_no*FLAGS.batch_size) < len(qa_data["validation"]):
+			sentence, answer, img = get_validation_batch(batch_no, FLAGS.batch_size, img_features, image_id_map, qa_data)
+			
+			_, loss_value, accuracy, pred = sess.run([t_prediction, t_ans_probab], feed_dict={
+					input_tensors['img']: img,
+					input_tensors["sentence"]:sentence,
+					input_tensors['sentence']: answer,
+					})
+			
+			batch_no += 1
+			
+			if FLAGS.debug:
+				for idx, p in enumerate(pred):
+					print(ans_map[p], ans_map[ np.argmax(answer[idx])])
 
-			print("Loss", loss_value, batch_no, i)
-			print("Accuracy", accuracy)
-			print("---------------")
-		else:
-			print("Loss", loss_value, batch_no, i)
-			print("Training Accuracy", accuracy)
+				print("Loss", loss_value, batch_no, i)
+				print("Accuracy", accuracy)
+				print("---------------")
+			else:
+				print("Loss", loss_value, batch_no, i)
+				print("Training Accuracy", accuracy)
 
 def get_validation_batch(batch_no, batch_size, img_features, image_id_map, qa_data):
 	qa = qa_data["validation"]
