@@ -1,1 +1,1 @@
-# 201807.university.t8.artificial_intelligence.project
+# Visual Question Answering (Tensorflow)
