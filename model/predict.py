@@ -68,7 +68,7 @@ def main(image_path="test.jpg", question="what is in the image?"):
         images = tf.placeholder("float32", [None, 224, 224, 3])
         with slim.arg_scope(resnet.resnet_arg_scope()):
             net, _ = resnet.resnet_v2_152(images, 1001, is_training=False)
-       restorer = tf.train.Saver()
+        restorer = tf.train.Saver()
 
         with tf.Session() as sess:#config=tf.ConfigProto(log_device_placement=True)) as sess:
             start = time.clock()

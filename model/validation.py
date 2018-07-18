@@ -20,13 +20,13 @@ def main():
 	tf.app.flags.DEFINE_integer("batch_size", 200, "size of batches")
 	tf.app.flags.DEFINE_float("learning_rate", 0.001, "learning rate")
 	tf.app.flags.DEFINE_integer("epochs", 200, "number of epochs")
-	tf.app.flags.DEFINE_string("checkpoint_path", None, "directory of checkpoint files")
+	tf.app.flags.DEFINE_string("checkpoint_path", './data/pretrain/model', "directory of checkpoint files")
 	tf.app.flags.DEFINE_bool("debug", True, "debug subroutine")
 	FLAGS = tf.app.flags.FLAGS
 	
 	print("Reading QA DATA")
 	qa_data = utils.load_questions_answers(FLAGS.data_dir)                                                           
-	
+	vocab_data = utils.get_question_answer_vocab(FLAGS.data_dir)
 	print("Reading image features")
 	img_features, image_id_list = utils.load_image_features(FLAGS.data_dir, "val")
 	print("img features", img_features.shape)
@@ -57,13 +57,13 @@ def main():
 
 		avg_accuracy = 0.0
 		total = 0
-		checkpoint = tf.train.latest_checkpoint(flags_checkpoint_path)
+		checkpoint = tf.train.latest_checkpoint(FLAGS.checkpoint_path)
 		restorer.restore(sess, checkpoint)
 		
 		batch_no = 0
 		while (batch_no*FLAGS.batch_size) < len(qa_data['validation']):
 			sentence, answer, img = get_batch(batch_no, FLAGS.batch_size, 
-				img_features, image_id_map, qa_data, 'val')
+				img_features, image_id_map, qa_data)
 			
 			pred, ans_prob = sess.run([t_prediction, t_ans_probab], feed_dict={
 	            input_tensors['img']:img,
@@ -84,7 +84,7 @@ def main():
 		
 		print("Acc", avg_accuracy/total)
 
-def get_validation_batch(batch_no, batch_size, img_features, image_id_map, qa_data):
+def get_batch(batch_no, batch_size, img_features, image_id_map, qa_data):
 	qa = qa_data["validation"]
 	
 	si = (batch_no * batch_size)
