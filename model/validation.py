@@ -1,5 +1,6 @@
 import tensorflow as tf
 import tensorflow.contrib.slim.nets as nets
+import tensorflow.contrib.slim as slim
 import vis_lstm_model
 import numpy as np
 from os.path import isfile, join
@@ -21,55 +22,55 @@ def main():
 	tf.app.flags.DEFINE_integer("epochs", 200, "number of epochs")
 	tf.app.flags.DEFINE_string("checkpoint_path", None, "directory of checkpoint files")
 	tf.app.flags.DEFINE_bool("debug", True, "debug subroutine")
-	
+	tf.app.flags.DEFINE_string("image_path","./data/val2014","image path")
 	FLAGS = tf.app.flags.FLAGS
 	
 	print("Reading QA DATA")
 	qa_data = utils.load_questions_answers(FLAGS.data_dir)                                                           
-	
+	vocab_data = utils.get_question_answer_vocab(FLAGS.data_dir)
 	print("Reading image features")
 	img_features, image_id_list = utils.load_image_features(FLAGS.data_dir, "validation")
 	print("img features", img_features.shape)
 	print("image_id_list", image_id_list.shape)
-
+	ans_map = { qa_data['answer_vocab'][ans] : ans for ans in qa_data['answer_vocab']}
+	resnet = nets.resnet_v2
 	image_id_map = {}
 	for i in range(len(image_id_list)):
 		image_id_map[ image_id_list[i] ] = i
 	
-	ans_map = { qa_data['answer_vocab'][ans] : ans for ans in qa_data['answer_vocab']}
-
-
+	
 	with tf.Graph().as_default():
-        images = tf.placeholder("float32", [None, 224, 224, 3])
-        with slim.arg_scope(resnet.resnet_arg_scope()):
-            net, _ = resnet.resnet_v2_152(images, 1001, is_training=False)
+		images = tf.placeholder("float32", [None, 224, 224, 3])	
+		with slim.arg_scope(resnet.resnet_arg_scope()):
+			net, _ = resnet.resnet_v2_152(images, 1001, is_training=False)
 
-        restorer = tf.train.Saver()
+		restorer = tf.train.Saver()
 
-        with tf.Session() as sess:#config=tf.ConfigProto(log_device_placement=True)) as sess:
-            start = time.clock()
-            image_array = utils.load_image_array(flags_image_path)
-            image_feed = np.ndarray((1, 224, 224, 3))
-            image_feed[0:, :, :] = image_array
+		with tf.Session() as sess:
+			start = time.clock()
+			
+			image_array = utils.load_image_array(FLAGS.image_path)
+			image_feed = np.ndarray((1, 224, 224, 3))
+			image_feed[0:, :, :] = image_array
 
-            # checkpoint = tf.train.latest_checkpoint(flags_img_checkpoint_path)
-            checkpoint = flags_img_checkpoint_path
-            restorer.restore(sess, checkpoint)
-            print("Image Model loaded")
-            feed_dict = {images: image_feed}
-            img_feature = sess.run(net, feed_dict=feed_dict)
-            img_feature = np.squeeze(img_feature)
-            end = time.clock()
-            print("Time elapsed", end - start)
-            print("Image processed")
+			checkpoint = FLAGS.checkpoint_path
+			restorer.restore(sess, checkpoint)
+			print("Image Model loaded")
+			feed_dict = {images: image_feed}
+			img_feature = sess.run(net, feed_dict=feed_dict)
+			img_feature = np.squeeze(img_feature)
+			#img_features2[] = img_feature
+			end = time.clock()
+			print("Time elapsed", end - start)
+			print("Image processed")
 
 	model_options = {
-		'num_lstm_layers': flags_num_lstm_layers,
-		'rnn_size': flags_rnn_size,
-		'embedding_size': flags_que_feat_len,
-		'word_emb_dropout': flags_word_dropout,
-		'image_dropout': flags_img_dropout,
-		'img_feature_length': flags_img_feat_len,
+		'num_lstm_layers': FLAGS.num_lstm_layers,
+		'rnn_size': FLAGS.rnn_size,
+		'embedding_size': FLAGS.que_feat_len,
+		'word_emb_dropout': FLAGS.word_dropout,
+		'image_dropout': FLAGS.img_dropout,
+		'img_feature_length': FLAGS.img_feat_len,
 		'lstm_steps': vocab_data['max_question_length'] + 1,
 		'q_vocab_size': len(vocab_data['question_vocab']),
 		'ans_vocab_size': len(vocab_data['answer_vocab'])
