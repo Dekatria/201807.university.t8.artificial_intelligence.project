@@ -22,47 +22,21 @@ def main():
 	tf.app.flags.DEFINE_integer("epochs", 200, "number of epochs")
 	tf.app.flags.DEFINE_string("checkpoint_path", None, "directory of checkpoint files")
 	tf.app.flags.DEFINE_bool("debug", True, "debug subroutine")
-	tf.app.flags.DEFINE_string("image_path","./data/val2014","image path")
 	FLAGS = tf.app.flags.FLAGS
 	
 	print("Reading QA DATA")
 	qa_data = utils.load_questions_answers(FLAGS.data_dir)                                                           
-	vocab_data = utils.get_question_answer_vocab(FLAGS.data_dir)
+	
 	print("Reading image features")
-	img_features, image_id_list = utils.load_image_features(FLAGS.data_dir, "validation")
+	img_features, image_id_list = utils.load_image_features(FLAGS.data_dir, "val")
 	print("img features", img_features.shape)
 	print("image_id_list", image_id_list.shape)
-	ans_map = { qa_data['answer_vocab'][ans] : ans for ans in qa_data['answer_vocab']}
-	resnet = nets.resnet_v2
+
 	image_id_map = {}
 	for i in range(len(image_id_list)):
 		image_id_map[ image_id_list[i] ] = i
 	
-	
-	with tf.Graph().as_default():
-		images = tf.placeholder("float32", [None, 224, 224, 3])	
-		with slim.arg_scope(resnet.resnet_arg_scope()):
-			net, _ = resnet.resnet_v2_152(images, 1001, is_training=False)
-
-		restorer = tf.train.Saver()
-
-		with tf.Session() as sess:
-			start = time.clock()
-			
-			image_array = utils.load_image_array(FLAGS.image_path)
-			image_feed = np.ndarray((1, 224, 224, 3))
-			image_feed[0:, :, :] = image_array
-
-			checkpoint = FLAGS.checkpoint_path
-			restorer.restore(sess, checkpoint)
-			print("Image Model loaded")
-			feed_dict = {images: image_feed}
-			img_feature = sess.run(net, feed_dict=feed_dict)
-			img_feature = np.squeeze(img_feature)
-			#img_features2[] = img_feature
-			end = time.clock()
-			print("Time elapsed", end - start)
-			print("Image processed")
+	ans_map = { qa_data['answer_vocab'][ans] : ans for ans in qa_data['answer_vocab']}
 
 	model_options = {
 		'num_lstm_layers': FLAGS.num_lstm_layers,
@@ -76,38 +50,39 @@ def main():
 		'ans_vocab_size': len(vocab_data['answer_vocab'])
 	}
 	
-	# load cached model
-	with tf.Graph().as_default():
-		model = vis_lstm_model.Vis_lstm_model(model_options)
-		input_tensors, t_prediction, t_ans_probab = model.build_generator()
+	model = vis_lstm_model.Vis_lstm_model(model_options)
+	input_tensors, t_prediction, t_ans_probab = model.build_generator()
+	with tf.Session() as sess:
 		restorer = tf.train.Saver()
-		sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
-		checkpoint = tf.train.latest_checkpoint(FLAGS.checkpoint_path)
+
+		avg_accuracy = 0.0
+		total = 0
+		checkpoint = tf.train.latest_checkpoint(flags_checkpoint_path)
 		restorer.restore(sess, checkpoint)
-			
-		batch_no = 0
 		
-		while (batch_no*FLAGS.batch_size) < len(qa_data["validation"]):
-			sentence, answer, img = get_validation_batch(batch_no, FLAGS.batch_size, img_features, image_id_map, qa_data)
+		batch_no = 0
+		while (batch_no*FLAGS.batch_size) < len(qa_data['validation']):
+			sentence, answer, img = get_batch(batch_no, FLAGS.batch_size, 
+				img_features, image_id_map, qa_data, 'val')
 			
-			_, loss_value, accuracy, pred = sess.run([t_prediction, t_ans_probab], feed_dict={
-					input_tensors['img']: img,
-					input_tensors["sentence"]:sentence,
-					input_tensors['sentence']: answer,
-					})
+			pred, ans_prob = sess.run([t_prediction, t_ans_probab], feed_dict={
+	            input_tensors['img']:img,
+	            input_tensors['sentence']:sentence,
+	        })
 			
 			batch_no += 1
-			
 			if FLAGS.debug:
 				for idx, p in enumerate(pred):
 					print(ans_map[p], ans_map[ np.argmax(answer[idx])])
 
-				print("Loss", loss_value, batch_no, i)
-				print("Accuracy", accuracy)
-				print("---------------")
-			else:
-				print("Loss", loss_value, batch_no, i)
-				print("Training Accuracy", accuracy)
+			correct_predictions = np.equal(pred, np.argmax(answer, 1))
+			correct_predictions = correct_predictions.astype('float32')
+			accuracy = correct_predictions.mean()
+			print("Acc", accuracy)
+			avg_accuracy += accuracy
+			total += 1
+		
+		print("Acc", avg_accuracy/total)
 
 def get_validation_batch(batch_no, batch_size, img_features, image_id_map, qa_data):
 	qa = qa_data["validation"]
